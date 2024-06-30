@@ -3,6 +3,12 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
+import os
+import sys
+
+if os.path.exists("model.pth"):
+    print("Model already exists")
+    sys.exit(0)
 
 training_data = datasets.FashionMNIST(
     root="data",
@@ -20,7 +26,6 @@ test_data = datasets.FashionMNIST(
 
 batch_size = 64
 
-# Create data loaders.
 train_dataloader = DataLoader(training_data, batch_size=batch_size)
 test_dataloader = DataLoader(test_data, batch_size=batch_size)
 
@@ -29,7 +34,6 @@ for X, y in test_dataloader:
     print(f"Shape of y: {y.shape} {y.dtype}")
     break
 
-# Get cpu, gpu or mps device for training.
 device = (
     "cuda"
     if torch.cuda.is_available()
@@ -39,7 +43,6 @@ device = (
 )
 print(f"Using {device} device")
 
-# Define model
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
@@ -69,11 +72,9 @@ def train(dataloader, model, loss_fn, optimizer):
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
 
-        # Compute prediction error
         pred = model(X)
         loss = loss_fn(pred, y)
 
-        # Backpropagation
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
@@ -108,3 +109,4 @@ print("Done!")
 
 torch.save(model.state_dict(), "model.pth")
 print("Saved PyTorch Model State to model.pth")
+
