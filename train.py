@@ -1,14 +1,15 @@
 import torch
 import torch.nn as nn
 import torch.utils.data
-from dataset import RecipeImageDataset, transform, classes, device
+from dataset import RecipeImageDataset, transform, classes, device, class_weights
 from model import IngredientModel
+from matplotlib import pyplot as plt
 
 dataset = RecipeImageDataset(
     json_file='data/annotations.json',
-    img_dir='data/val/',
+    img_dir='data/train/',
     transform=transform,
-    partition="val"
+    partition="train"
 )
 
 N = len(classes)
@@ -19,10 +20,20 @@ batch_size = 64
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 model = IngredientModel(num_ingredients=N).to(device)
-criterion = nn.BCELoss()
+
+#model.load_state_dict(torch.load("checkpoints/model-epoch0.pth"))
+
+criterion = nn.BCEWithLogitsLoss(weight=class_weights)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 print("batches per epoch:", (len(dataset) + batch_size - 1) // batch_size)
+
+plot_loss = []
+
+# add plot title and labels
+plt.title("Loss")
+plt.xlabel("Batch")
+plt.ylabel("Loss")
 
 for epoch in range(num_epochs):
     epoch_loss = 0.0
@@ -39,12 +50,22 @@ for epoch in range(num_epochs):
         loss.backward()
         optimizer.step()
 
+        plot_loss.append(loss.item())
+
         if i % 10 == 0:
-            print(f'Epoch {epoch+1}, Batch {i+1}, Loss: {collected_loss}')
+            print(f'Epoch {epoch}, Batch {i}, Loss: {collected_loss/10}')
             collected_loss = 0.0
 
-    torch.save(model.state_dict(), f"checkpoints/model-epoch{epoch}.pth")
+            # clear old stuff
+            plt.clf()
+            plt.plot(plot_loss)
+            plt.pause(0.05)
 
+    print(f'Epoch {epoch}, Loss: {epoch_loss/len(dataloader)}')
+
+    print(f"saving model to checkpoints/model-epoch{epoch}.pth")
+    torch.save(model.state_dict(), f"checkpoints/model-epoch{epoch}.pth")
+    print("model saved")
 
     accuracy = 0.0
     total = 0

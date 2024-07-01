@@ -30,10 +30,17 @@ def clean_ingredient(ingredient):
 
 df["ingredients"] = df["ingredients"].map(lambda x: list(set(filter(lambda i: 2 < len(i) < 15 and not i.endswith("ed"), map(clean_ingredient, x)))))
 
+classes = df.explode("ingredients")["ingredients"].value_counts(normalize=True).to_dict()
+classes = { k: v for k, v in sorted(classes.items(), key=lambda item: item[1], reverse=True)[:500] }
+
+# remove ingredients that are not in the top 500
+df["ingredients"] = df["ingredients"].map(lambda x: list(filter(lambda i: i in classes, x)))
+
+# remove rows with no ingredients
+df = df.query("ingredients.str.len() > 0")
+
 ann = df[["id", "ingredients", "partition"]]
 ann.to_json(path_or_buf="data/annotations.json", index=False, orient="records")
-
-classes = df.explode("ingredients")["ingredients"].unique().tolist()
 
 with open("data/classes.pkl", "wb") as f:
     pickle.dump(classes, f)

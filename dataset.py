@@ -14,7 +14,11 @@ transform = transforms.Compose([
 ])
 
 with open("data/classes.pkl", "rb") as f:
-    classes = pickle.load(f)
+    # dict[str, int] -- class name to count in dataset
+    c = pickle.load(f)
+
+    classes = sorted(c.keys())
+    class_weights = torch.tensor([c[cls] for cls in classes])
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
