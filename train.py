@@ -23,7 +23,7 @@ model = IngredientModel(num_ingredients=N).to(device)
 
 #model.load_state_dict(torch.load("checkpoints/model-epoch0.pth"))
 
-criterion = nn.BCEWithLogitsLoss(weight=class_weights)
+criterion = nn.BCELoss(weight=class_weights).to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 print("batches per epoch:", (len(dataset) + batch_size - 1) // batch_size)
