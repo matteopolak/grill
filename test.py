@@ -1,7 +1,15 @@
+import argparse
+
 import torch
 import torch.utils.data
-from dataset import RecipeImageDataset, transform, classes
-from model import IngredientModel
+
+from .dataset import RecipeImageDataset, transform, classes, device
+from .model import IngredientModel
+
+parser = argparse.ArgumentParser(description='Test the model')
+parser.add_argument('--model', type=str, required=True, help='Path to the model')
+
+args = parser.parse_args()
 
 dataset = RecipeImageDataset(
     json_file='data/annotations.json',
@@ -12,9 +20,9 @@ dataset = RecipeImageDataset(
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
 
-model = IngredientModel(num_ingredients=len(classes))
+model = IngredientModel(num_ingredients=len(classes)).to(device)
 
-# model.load_state_dict(torch.load("trained/model.pth"))
+model.load_state_dict(torch.load(args.model))
 
 accuracy = 0.0
 total = 0
@@ -22,13 +30,10 @@ total = 0
 with torch.no_grad():
     for images, labels in dataloader:
         outputs = model(images)
-        predicted = torch.round(outputs)
+        predicted = outputs
 
         # sigmoid
         predicted = predicted.sigmoid()
-
-        print(predicted)
-        print(labels)
 
         # for each scalar in the tensor, if it's greater than 0.7 then index
         # into the `classes` list and append the class to the `predicted_classes`
