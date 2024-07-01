@@ -1,6 +1,9 @@
 # Grill
 
-Grill is a machine learning model that takes in an image of a recipe and outputs a list of ingredients, trained on the [Recipe1M dataset](http://pic2recipe.csail.mit.edu/).
+Grill is an image-to-ingredients machine learning model to help you find your next meal.
+It is based off of a fine-tuned version of the ResNet-50 model for image classification.
+
+The [Recipe1M+](http://pic2recipe.csail.mit.edu/) dataset was used to train the model.
 
 ## Training
 

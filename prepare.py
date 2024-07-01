@@ -1,48 +1,74 @@
-import pandas as pd
+import polars as pl
 import pickle
-import re
 
-l1 = pd.read_json('data/layer1.json')
-l2 = pd.read_json('data/layer2.json')
+l1 = pl.read_json("data/layer1.json")
+l2 = pl.read_json("data/layer2.json")
 
 # match l1.id to l2.id, then replace l1.id with l2.images[0].id
-df = l1.merge(l2, on="id", indicator=True, how="inner")
-df["id"] = df.apply(lambda x: x["images"][0]["id"][:-4], axis=1)
+df = l1.join(l2, on="id")
 
-# list[{ "text": str }] -> list[str]
-df["ingredients"] = df["ingredients"].map(lambda x: list(map(lambda y: y["text"], x)))
-df["ingredients"] = df.apply(lambda x: [v.strip().lower() for v in x["ingredients"] if len(v) < 20], axis=1)
+df.replace_column(
+    df.get_column_index("id"),
+    df.select(pl.col("images")
+        .list.first().struct.field("id")
+        .str.head(-4)
+        .alias("id")).to_series())
 
-# remove text between parentheses, and (if the ingredient starts with a number),
-# remove the number and the next word following it (if there are multiple numbers in a row, keep removing
-# until there's a word). e.g. "1 1/2 cup sugar" -> "sugar"
-parentheses_regex = re.compile(r"\([^)]*\)")
-number_regex = re.compile(r"^\s*[-\d][^\s]*\s+(?:[-\d][^\s]+\s+)*[^\s]*\s*(?=[^-\d\s])")
-after_comma_regex = re.compile(r",.*")
+df.drop_in_place("url")
+df.drop_in_place("title")
+df.drop_in_place("instructions")
+df.drop_in_place("images")
 
-def clean_ingredient(ingredient):
-    ingredient = re.sub(parentheses_regex, "", ingredient)
-    ingredient = re.sub(number_regex, "", ingredient)
-    ingredient = re.sub(after_comma_regex, "", ingredient)
-    ingredient = ingredient.replace("\"", "").replace("\'", "").strip()
+df.replace_column(
+    df.get_column_index("ingredients"),
+    df.select(pl.col("ingredients")
+        .list.eval(pl.element()
+            .struct.field("text")
+            .str.to_lowercase()
+            .str.strip_chars()
+            # remove text between parentheses, and (if the ingredient starts with a number),
+            # remove the number and the next word following it (if there are multiple numbers in a row, keep removing
+            # until there's a word). e.g. "1 1/2 cup sugar" -> "sugar"
+            .str.replace_all(
+                r"\([^()]*\)|,.*|\"|\'",
+                ""
+            )
+            .str.replace_all(
+                r"^\s*[-\d][^\s]*\s+(?:[-\d][^\s]+\s+)*[^\s]*\s*([^\-\d\s])",
+                "${1}"
+            ))
+        .list.eval(pl.element()
+            .filter(pl.element().str.len_bytes().is_between(2, 15) & ~pl.element().str.ends_with("ed")))
+        .alias("ingredients")).to_series()
+)
 
-    return ingredient
+classes = (df.get_column("ingredients")
+    .explode().alias("ingredient")
+    .value_counts(sort=True)
+    .filter(pl.col("count") >= 100))
 
-df["ingredients"] = df["ingredients"].map(lambda x: list(set(filter(lambda i: 2 < len(i) < 15 and not i.endswith("ed"), map(clean_ingredient, x)))))
+# remove ingredients that are not in the classes
+df.replace_column(
+    df.get_column_index("ingredients"),
+    df.select(pl.col("ingredients")
+        .list.eval(pl.element().filter(pl.element().is_in(classes.get_column("ingredient"))))).to_series())
 
-n_ingredients = 1000
+df.filter(pl.col("ingredients").list.len() > 5)
 
-classes = df.explode("ingredients")["ingredients"].value_counts().to_dict()
-classes = { k: v for k, v in sorted(classes.items(), key=lambda item: item[1], reverse=True)[:n_ingredients] }
+num_recipes = len(df)
 
-# remove ingredients that are not in the top `n_ingredients`
-df["ingredients"] = df["ingredients"].map(lambda x: list(filter(lambda i: i in classes, x)))
+df.write_parquet("data/annotations.parquet")
 
-# remove rows with too few ingredients
-df = df.query("ingredients.str.len() > 7")
-
-ann = df[["id", "ingredients", "partition"]]
-ann.to_json(path_or_buf="data/annotations.json", index=False, orient="records")
+# remove unused ingredients that did not pass the above filter
+# and divide the number of recipes by the number of occurrences of each ingredient
+# so it can be used as a weight in the loss function
+classes = (df.get_column("ingredients")
+    .explode().alias("ingredient")
+    .value_counts()
+    .filter(pl.col("count") > 100))
+classes = classes.replace_column(
+    classes.get_column_index("count"),
+    classes.select(pl.lit(num_recipes) / pl.col("count")).to_series())
 
 with open("data/classes.pkl", "wb") as f:
     pickle.dump(classes, f)

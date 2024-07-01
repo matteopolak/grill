@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 import torch.utils.data
 
-from dataset import RecipeImageDataset, transform, classes, device, class_weights
-from model import IngredientModel
+from dataset import RecipeImageDataset, transform, classes, device, pos_class_weights
+from model import create_model
 
 logger = logging.getLogger()
 logging.basicConfig(
@@ -17,7 +17,8 @@ logging.basicConfig(
 
 parser = argparse.ArgumentParser(prog="train.py", description="Fire up the grill")
 parser.add_argument("--epochs", type=int, default=5, help="Number of epochs to train the model")
-parser.add_argument("--batch-size", type=int, default=64, help="Batch size")
+parser.add_argument("--batch-size", type=int, default=32, help="Batch size")
+parser.add_argument("--lr", type=float, default=0.001, help="Learning rate)")
 parser.add_argument("--checkpoint", type=int, default=None, help="Checkpoint to resume training")
 parser.add_argument("--plot", action="store_true", help="Plot the loss")
 
@@ -28,7 +29,7 @@ num_epochs = args.epochs
 batch_size = args.batch_size
 
 dataset = RecipeImageDataset(
-    json_file="data/annotations.json",
+    parquet_file="data/annotations.parquet",
     img_dir="data/train/",
     transform=transform,
     partition="train"
@@ -36,13 +37,13 @@ dataset = RecipeImageDataset(
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-model = IngredientModel(num_ingredients=len(classes)).to(device)
+model = create_model(num_ingredients=len(classes)).to(device)
 
 if args.checkpoint is not None:
     model.load_state_dict(torch.load(f"checkpoints/grill-epoch{args.checkpoint}.pth"))
 
-criterion = nn.BCEWithLogitsLoss(weight=class_weights).to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
+criterion = nn.BCEWithLogitsLoss(pos_weight=pos_class_weights).to(device)
+optimizer = torch.optim.Adam(model.classifier.parameters(), lr=args.lr)
 
 plot_loss = []
 
@@ -50,6 +51,8 @@ plot_loss = []
 plt.title("Loss")
 plt.xlabel("Batch")
 plt.ylabel("Loss")
+
+logger.info(f"{(len(dataset) + batch_size - 1) // batch_size} batches per epoch")
 
 for epoch in range(epoch_start, num_epochs + epoch_start):
     epoch_loss = 0.0
@@ -90,9 +93,10 @@ for epoch in range(epoch_start, num_epochs + epoch_start):
     with torch.no_grad():
         for images, labels in dataloader:
             outputs = model(images)
-            predicted = torch.round(outputs)
+            predicted = outputs.sigmoid()
+
             total += labels.size(0)
-            accuracy += (predicted == labels).sum().item()
+            accuracy += (predicted - labels).abs().sum().item()
 
     logger.info(f"Epoch {epoch}, Accuracy: {accuracy/total}")
 

@@ -1,5 +1,5 @@
 matplotlib
-pandas
+polars
 Pillow
 torch
 torchvision
