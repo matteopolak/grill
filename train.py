@@ -1,12 +1,15 @@
 import argparse
+import logging
 
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
 import torch.utils.data
 
-from .dataset import RecipeImageDataset, transform, classes, device, class_weights
-from .model import IngredientModel
+from dataset import RecipeImageDataset, transform, classes, device, class_weights
+from model import IngredientModel
+
+logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser(prog="train.py", description="Fire up the grill")
 parser.add_argument("--epochs", type=int, default=5, help="Number of epochs to train the model")
@@ -36,8 +39,6 @@ if args.checkpoint is not None:
 criterion = nn.BCEWithLogitsLoss(weight=class_weights).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
 
-print("batches per epoch:", (len(dataset) + batch_size - 1) // batch_size)
-
 plot_loss = []
 
 # add plot title and labels
@@ -61,7 +62,7 @@ for epoch in range(num_epochs):
         optimizer.step()
 
         if i % 10 == 0:
-            print(f'Epoch {epoch}, Batch {i}, Loss: {collected_loss/10}')
+            logger.info(f'Epoch {epoch}, Batch {i}, Loss: {collected_loss/10}')
 
             if args.plot:
                 plot_loss.append(loss.item())
@@ -73,11 +74,10 @@ for epoch in range(num_epochs):
 
             collected_loss = 0.0
 
-    print(f'Epoch {epoch}, Loss: {epoch_loss/len(dataloader)}')
+    logger.info(f'Epoch {epoch}, Loss: {epoch_loss/len(dataloader)}')
+    logger.info(f"Saving model to checkpoints/grill-epoch{epoch}.pth")
 
-    print(f"saving model to checkpoints/grill-epoch{epoch}.pth")
     torch.save(model.state_dict(), f"checkpoints/grill-epoch{epoch}.pth")
-    print("model saved")
 
     accuracy = 0.0
     total = 0
@@ -89,7 +89,7 @@ for epoch in range(num_epochs):
             total += labels.size(0)
             accuracy += (predicted == labels).sum().item()
 
-    print(f'Epoch {epoch+1}, Loss: {epoch_loss/len(dataloader)}, Accuracy: {accuracy/total}')
+    logger.info(f'Epoch {epoch}, Accuracy: {accuracy/total}')
 
 torch.save(model.state_dict(), "models/grill.pth")
 

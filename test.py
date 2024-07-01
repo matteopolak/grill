@@ -3,8 +3,8 @@ import argparse
 import torch
 import torch.utils.data
 
-from .dataset import RecipeImageDataset, transform, classes, device
-from .model import IngredientModel
+from dataset import RecipeImageDataset, transform, classes, device
+from model import IngredientModel
 
 parser = argparse.ArgumentParser(description='Test the model')
 parser.add_argument('--model', type=str, required=True, help='Path to the model')

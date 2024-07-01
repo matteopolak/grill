@@ -21,7 +21,6 @@ with open("data/classes.pkl", "rb") as f:
     class_weights = torch.tensor([c[cls] for cls in classes])
     class_weights = class_weights / class_weights.sum()
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class RecipeImageDataset(Dataset):
