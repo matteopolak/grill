@@ -2,6 +2,7 @@ import argparse
 
 import torch
 import torch.utils.data
+import torchvision
 
 from dataset import RecipeImageDataset, transform, classes, device
 from model import IngredientModel
@@ -27,36 +28,23 @@ model.load_state_dict(torch.load(args.model))
 accuracy = 0.0
 total = 0
 
+def format_prediction(prediction: torch.Tensor) -> str:
+    predicted_classes = []
+
+    for i, v in enumerate(prediction):
+        if v > 0.4:
+            predicted_classes.append(classes[i])
+
+    return ', '.join(predicted_classes)
+
 with torch.no_grad():
     for images, labels in dataloader:
         outputs = model(images)
-        predicted = outputs
 
-        # sigmoid
-        predicted = predicted.sigmoid()
-
-        # for each scalar in the tensor, if it's greater than 0.7 then index
-        # into the `classes` list and append the class to the `predicted_classes`
-        # list
-        predicted_classes = []
-
-        for i in range(len(predicted)):
-            for j in range(len(predicted[i])):
-                if predicted[i][j] > 0.7:
-                    predicted_classes.append(classes[j])
-
-        print("Predicted Classes:")
-        print(predicted_classes)
-
-        actual_classes = []
-
-        for i in range(len(labels)):
-            for j in range(len(labels[i])):
-                if labels[i][j] == 1:
-                    actual_classes.append(classes[j])
-
-        print("Actual Classes:")
-        print(actual_classes)
+        for i, output in enumerate(outputs):
+            print("Predicted", format_prediction(output.sigmoid()))
+            print("Actual", format_prediction(labels[i]))
+            print("====================================")
 
         break
 

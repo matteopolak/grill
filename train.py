@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 
 from matplotlib import pyplot as plt
 import torch
@@ -9,22 +10,26 @@ import torch.utils.data
 from dataset import RecipeImageDataset, transform, classes, device, class_weights
 from model import IngredientModel
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
+logging.basicConfig(
+    level=os.environ.get("LOG", "INFO").upper()
+)
 
 parser = argparse.ArgumentParser(prog="train.py", description="Fire up the grill")
 parser.add_argument("--epochs", type=int, default=5, help="Number of epochs to train the model")
 parser.add_argument("--batch-size", type=int, default=64, help="Batch size")
-parser.add_argument("--checkpoint", type=str, default=None, help="Path to a model checkpoint to load (in the checkpoints/ directory)")
+parser.add_argument("--checkpoint", type=int, default=None, help="Checkpoint to resume training")
 parser.add_argument("--plot", action="store_true", help="Plot the loss")
 
 args = parser.parse_args()
 
+epoch_start = args.checkpoint + 1 if args.checkpoint is not None else 0
 num_epochs = args.epochs
 batch_size = args.batch_size
 
 dataset = RecipeImageDataset(
-    json_file='data/annotations.json',
-    img_dir='data/train/',
+    json_file="data/annotations.json",
+    img_dir="data/train/",
     transform=transform,
     partition="train"
 )
@@ -34,7 +39,7 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle
 model = IngredientModel(num_ingredients=len(classes)).to(device)
 
 if args.checkpoint is not None:
-    model.load_state_dict(torch.load(f"checkpoints/{args.checkpoint}"))
+    model.load_state_dict(torch.load(f"checkpoints/grill-epoch{args.checkpoint}.pth"))
 
 criterion = nn.BCEWithLogitsLoss(weight=class_weights).to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
@@ -46,7 +51,7 @@ plt.title("Loss")
 plt.xlabel("Batch")
 plt.ylabel("Loss")
 
-for epoch in range(num_epochs):
+for epoch in range(epoch_start, num_epochs + epoch_start):
     epoch_loss = 0.0
     collected_loss = 0.0
 
@@ -62,7 +67,7 @@ for epoch in range(num_epochs):
         optimizer.step()
 
         if i % 10 == 0:
-            logger.info(f'Epoch {epoch}, Batch {i}, Loss: {collected_loss/10}')
+            logger.info(f"Epoch {epoch}, Batch {i}, Loss: {collected_loss/10}")
 
             if args.plot:
                 plot_loss.append(loss.item())
@@ -74,7 +79,7 @@ for epoch in range(num_epochs):
 
             collected_loss = 0.0
 
-    logger.info(f'Epoch {epoch}, Loss: {epoch_loss/len(dataloader)}')
+    logger.info(f"Epoch {epoch}, Loss: {epoch_loss/len(dataloader)}")
     logger.info(f"Saving model to checkpoints/grill-epoch{epoch}.pth")
 
     torch.save(model.state_dict(), f"checkpoints/grill-epoch{epoch}.pth")
@@ -89,7 +94,7 @@ for epoch in range(num_epochs):
             total += labels.size(0)
             accuracy += (predicted == labels).sum().item()
 
-    logger.info(f'Epoch {epoch}, Accuracy: {accuracy/total}')
+    logger.info(f"Epoch {epoch}, Accuracy: {accuracy/total}")
 
 torch.save(model.state_dict(), "models/grill.pth")
 

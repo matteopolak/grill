@@ -10,3 +10,11 @@ To train the model, run the following command:
 python train.py --epochs 10 --batch_size 64
 ```
 
+## Inference
+
+To run inference on an image, run the following command:
+
+```bash
+python infer.py path/to/image.jpg
+```
+

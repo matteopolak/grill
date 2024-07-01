@@ -30,7 +30,7 @@ def clean_ingredient(ingredient):
 
 df["ingredients"] = df["ingredients"].map(lambda x: list(set(filter(lambda i: 2 < len(i) < 15 and not i.endswith("ed"), map(clean_ingredient, x)))))
 
-n_ingredients = 500
+n_ingredients = 1000
 
 classes = df.explode("ingredients")["ingredients"].value_counts().to_dict()
 classes = { k: v for k, v in sorted(classes.items(), key=lambda item: item[1], reverse=True)[:n_ingredients] }
@@ -39,7 +39,7 @@ classes = { k: v for k, v in sorted(classes.items(), key=lambda item: item[1], r
 df["ingredients"] = df["ingredients"].map(lambda x: list(filter(lambda i: i in classes, x)))
 
 # remove rows with too few ingredients
-df = df.query("ingredients.str.len() > 5")
+df = df.query("ingredients.str.len() > 7")
 
 ann = df[["id", "ingredients", "partition"]]
 ann.to_json(path_or_buf="data/annotations.json", index=False, orient="records")
