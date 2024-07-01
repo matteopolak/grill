@@ -1,10 +1,11 @@
 import os
 import pandas as pd
+import pickle
 
 import torch
-from torchvision.io import read_image
 from torch.utils.data import Dataset
 from torchvision import transforms
+from PIL import Image
 
 # resize to 128x128, normalize to [0, 1], and convert to tensor
 transform = transforms.Compose([
@@ -12,41 +13,37 @@ transform = transforms.Compose([
     transforms.ToTensor()
 ])
 
-classes = pd.read_json("data/annotations.json").explode("ingredients")["ingredients"].unique().tolist()
-# print non-strings
-print(list(filter(lambda x: not isinstance(x, str), classes)))
-classes = sorted(classes)
+with open("data/classes.pkl", "rb") as f:
+    classes = pickle.load(f)
 
-print(classes)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class RecipeImageDataset(Dataset):
-    def __init__(self, json_file, img_dir, transform=None):
-        self.annotations = pd.read_json(json_file)
+    def __init__(self, json_file, img_dir, transform=None, partition="train"):
+        self.annotations = pd.read_json(json_file).query(f"partition == '{partition}'")
+        self.annotations.reset_index(inplace=True)
 
         self.img_dir = img_dir
         self.transform = transform
 
-        self.paths = os.listdir(img_dir)
-        self.paths.sort()
-
     def __len__(self):
-        return len(self.paths)
+        return len(self.annotations)
 
     def __getitem__(self, index):
-        path = self.paths[index]
-        id = path.split('.')[0]
+        annotation = self.annotations.loc[index]
+        id = annotation["id"]
 
-        img_path = os.path.join(self.img_dir, path)
-        image = read_image(img_path)
+        img_path = os.path.join(self.img_dir, id[:1], id[1:2], id[2:3], id[3:4], id + ".jpg")
+        image = Image.open(img_path)
 
-        annotation = self.annotations.query(f"id == '{id}'").to_dict(orient="records")[0]
-
-        image_classes = annotation['ingredients'].tolist()
+        image_classes = annotation["ingredients"]
         # 1 for each class in the recipe's ingriedients list, 0 otherwise
         label = torch.tensor([1.0 if c in image_classes else 0.0 for c in classes])
 
         if self.transform:
             image = self.transform(image)
+        else:
+            image = transforms.ToTensor()(image)
 
-        return image, label
+        return image.to(device), label.to(device)
 
