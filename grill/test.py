@@ -23,7 +23,6 @@ dataset = RecipeImageDataset(
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True)
 
 model = create_model(num_ingredients=len(classes)).to(device)
-
 model.load_state_dict(torch.load(args.model))
 
 accuracy = 0.0
@@ -33,7 +32,7 @@ def format_prediction(prediction: torch.Tensor) -> str:
     predicted_classes = []
 
     for i, v in enumerate(prediction):
-        if v > 0.96:
+        if v > 0.7:
             predicted_classes.append(f"{classes[i]} ({v:.2f})")
 
     return ', '.join(predicted_classes)

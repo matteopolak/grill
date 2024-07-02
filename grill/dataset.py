@@ -14,7 +14,7 @@ transform = transforms.Compose([
 ])
 
 with open("data/classes.pkl", "rb") as f:
-    # dict[str, int] -- class name to count in dataset
+    # dict[str, int] -- class name to recipes/count
     c = pickle.load(f)
 
     classes = sorted(c.keys())

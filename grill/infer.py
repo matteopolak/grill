@@ -9,8 +9,9 @@ from dataset import transform, classes, device
 from model import create_model
 
 parser = argparse.ArgumentParser(description="Test the model")
-parser.add_argument("--model", type=str, required=True, help="Path to the model")
-parser.add_argument("--image", type=str, required=True, help="Path to the image")
+parser.add_argument("image", type=str, help="Path to the image")
+parser.add_argument("--model", type=str, default="models/grill.pth", help="Path to the model")
+parser.add_argument("--confidence", type=float, default=0.9, help="Confidence threshold")
 
 args = parser.parse_args()
 
@@ -21,8 +22,8 @@ def format_prediction(prediction: torch.Tensor) -> str:
     predicted_classes = []
 
     for i, v in enumerate(prediction):
-        if v > 0.7:
-            predicted_classes.append(classes[i])
+        if v >= args.confidence:
+            predicted_classes.append(f"{classes[i]} ({v:.2f})")
 
     return ", ".join(predicted_classes)
 
@@ -30,8 +31,10 @@ image = Image.open(args.image)
 image = cast(torch.Tensor, transform(image)).to(device)
 
 with torch.no_grad():
+    model.eval()
     outputs = model(image.unsqueeze(0))
 
     for i, output in enumerate(outputs):
+        print(output)
         print(format_prediction(output.sigmoid()))
 
