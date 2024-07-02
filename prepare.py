@@ -4,7 +4,6 @@ import pickle
 l1 = pl.read_json("data/layer1.json")
 l2 = pl.read_json("data/layer2.json")
 
-# match l1.id to l2.id, then replace l1.id with l2.images[0].id
 df = l1.join(l2, on="id")
 
 df.replace_column(
