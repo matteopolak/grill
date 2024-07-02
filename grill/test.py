@@ -33,8 +33,8 @@ def format_prediction(prediction: torch.Tensor) -> str:
     predicted_classes = []
 
     for i, v in enumerate(prediction):
-        if v > 0.7:
-            predicted_classes.append(classes[i])
+        if v > 0.96:
+            predicted_classes.append(f"{classes[i]} ({v:.2f})")
 
     return ', '.join(predicted_classes)
 
@@ -52,6 +52,4 @@ with torch.no_grad():
                 plt.xlabel(format_prediction(labels[i]))
                 plt.imshow(image)
                 plt.show()
-
-        break
 

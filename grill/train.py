@@ -87,18 +87,5 @@ for epoch in range(epoch_start, num_epochs + epoch_start):
 
     torch.save(model.state_dict(), f"checkpoints/grill-epoch{epoch}.pth")
 
-    accuracy = 0.0
-    total = 0
-
-    with torch.no_grad():
-        for images, labels in dataloader:
-            outputs = model(images)
-            predicted = outputs.sigmoid()
-
-            total += labels.size(0)
-            accuracy += (predicted - labels).abs().sum().item()
-
-    logger.info(f"Epoch {epoch}, Accuracy: {accuracy/total}")
-
 torch.save(model.state_dict(), "models/grill.pth")
 

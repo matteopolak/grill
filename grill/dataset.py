@@ -11,7 +11,6 @@ from PIL import Image
 transform = transforms.Compose([
     transforms.Resize((256, 256)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 with open("data/classes.pkl", "rb") as f:
@@ -26,7 +25,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class RecipeImageDataset(Dataset):
     def __init__(self, parquet_file, img_dir, transform=None, partition="train"):
         self.annotations = (pl.read_parquet(parquet_file)
-            .filter("parititon" == partition)
+            .filter(pl.col("partition") == partition)
             .with_row_index())
 
         self.img_dir = img_dir
