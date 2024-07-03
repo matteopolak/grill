@@ -5,7 +5,7 @@ def get_requirements(path: str):
 
 setup(
     name='grill',
-    version='0.0.1',
+    version='0.0.2',
     packages=find_packages(),
     requires=get_requirements('requirements.txt'),
 )
