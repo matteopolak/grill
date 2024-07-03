@@ -47,11 +47,6 @@ optimizer = torch.optim.Adam(model.classifier.parameters(), lr=args.lr)
 
 plot_loss = []
 
-# add plot title and labels
-plt.title("Loss")
-plt.xlabel("Batch")
-plt.ylabel("Loss")
-
 logger.info(f"{(len(dataset) + batch_size - 1) // batch_size} batches per epoch")
 
 for epoch in range(epoch_start, num_epochs + epoch_start):
@@ -69,15 +64,17 @@ for epoch in range(epoch_start, num_epochs + epoch_start):
         loss.backward()
         optimizer.step()
 
+        plot_loss.append(loss.item())
+
         if i % 10 == 0:
             logger.info(f"Epoch {epoch}, Batch {i}, Loss: {collected_loss/10}")
 
             if args.plot:
-                plot_loss.append(loss.item())
-                plot_loss = plot_loss[-100:]
-
                 plt.clf()
-                plt.plot(plot_loss)
+                plt.title("Loss")
+                plt.xlabel("Batch")
+                plt.ylabel("Loss")
+                plt.plot(plot_loss[-1000:])
                 plt.pause(0.05)
 
             collected_loss = 0.0
@@ -86,6 +83,25 @@ for epoch in range(epoch_start, num_epochs + epoch_start):
     logger.info(f"Saving model to checkpoints/grill-epoch{epoch}.pth")
 
     torch.save(model.state_dict(), f"checkpoints/grill-epoch{epoch}.pth")
+
+    # accuracy = 0.0
+    # 
+    # with torch.no_grad():
+    #     for images, labels in dataloader:
+    #         outputs = model(images)
+    #         accuracy += (outputs.sigmoid() - labels).abs().sum().item()
+    #
+    # accuracy /= len(dataset)
+    # logger.info(f"Epoch {epoch}, Accuracy: {accuracy}")
+
+plt.clf()
+plt.title("Loss")
+plt.xlabel("Batch")
+plt.ylabel("Loss")
+plt.plot(plot_loss)
+
+# save plot to file
+plt.savefig("loss.png")
 
 torch.save(model.state_dict(), "models/grill.pth")
 

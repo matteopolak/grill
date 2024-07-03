@@ -40,6 +40,8 @@ df.replace_column(
             .str.strip_prefix("tbsp ")
             .str.strip_prefix("tablespoon ")
             .str.strip_prefix("tablespoons ")
+            .str.strip_prefix("teaspoon ")
+            .str.strip_prefix("teaspoons ")
             .str.strip_prefix("tsp ")
             .str.strip_prefix("lbs ")
             .str.strip_prefix("lb ")
@@ -56,7 +58,7 @@ df.replace_column(
 classes = (df.get_column("ingredients")
     .explode().alias("ingredient")
     .value_counts()
-    .filter(pl.col("count") >= 80))
+    .filter(pl.col("count") >= 90))
 
 # remove ingredients that are not in the classes
 df.replace_column(
@@ -74,7 +76,7 @@ df.write_parquet("data/annotations.parquet")
 classes = (df.get_column("ingredients")
     .explode().alias("ingredient")
     .value_counts(sort=True)
-    .filter(pl.col("count") > 80)
+    .filter(pl.col("count") > 90)
     .drop_nulls())
 
 n_recipes = len(df)

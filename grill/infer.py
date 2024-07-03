@@ -35,6 +35,5 @@ with torch.no_grad():
     outputs = model(image.unsqueeze(0))
 
     for i, output in enumerate(outputs):
-        print(output)
         print(format_prediction(output.sigmoid()))
 
